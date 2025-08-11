@@ -1,0 +1,29 @@
+{
+  "name": "node_api",
+  "version": "1.0.0",
+  "main": "./SRC/index.js",
+  "scripts": {
+    "dev": "nodemon ./SRC/index.js",
+    "start": "node ./SRC/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^4.21.2",
+    "fs": "^0.0.1-security",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.0",
+    "path": "^0.12.7",
+    "pdf-merger-js": "^5.1.2",
+    "pdfmake": "^0.2.18",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}
