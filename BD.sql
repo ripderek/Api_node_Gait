@@ -688,10 +688,210 @@ $procedure$
 --select * from entrenamiento+
  
 
-select * from obtener_datos_entrenamiento(27)
+select * from obtener_datos_entrenamiento(13)
 
 
 --select * from modelos
+
+
+--agregar nuevos puntos a la tabla de entrenamiento
+--select * from entrenamiento
+alter table entrenamiento add p_16_12_promedio NUMERIC(20, 14) default 0 not null;
+alter table entrenamiento add p_16_12_desviacion NUMERIC(20, 14) default 0 not null;
+alter table entrenamiento add p_15_11_promedio NUMERIC(20, 14) default 0 not null;
+alter table entrenamiento add p_15_11_desviacion NUMERIC(20, 14) default 0 not null;
+alter table entrenamiento add p_32_16_promedio NUMERIC(20, 14) default 0 not null;
+alter table entrenamiento add p_32_16_desviacion NUMERIC(20, 14) default 0 not null;
+alter table entrenamiento add p_31_15_promedio NUMERIC(20, 14) default 0 not null;
+alter table entrenamiento add p_31_15_desviacion NUMERIC(20, 14) default 0 not null;
+
+--eliminar el procedimiento que guarda los puntos para crear uno nuevo que agrege los nuevos puntos
+
+--drop procedure registrar_puntos_muestra(
+	bigint,
+	bigint,
+	NUMERIC(20, 14),
+	NUMERIC(20, 14),
+	NUMERIC(20, 14),
+	NUMERIC(20, 14),
+	NUMERIC(20, 14),
+	NUMERIC(20, 14),
+	NUMERIC(20, 14),
+	NUMERIC(20, 14),
+	NUMERIC(20, 14),
+	NUMERIC(20, 14)
+	)
+
+CREATE OR REPLACE PROCEDURE public.registrar_puntos_muestra(
+	in videoid_p bigint,
+	in muestraid_p bigint,
+	in p_32_31_promedio_p   NUMERIC(20, 14),
+	in p_32_31_desviacion_p NUMERIC(20, 14),
+	in p_28_27_promedio_p   NUMERIC(20, 14),
+	in p_28_27_desviacion_p NUMERIC(20, 14),
+	in p_26_25_promedio_p   NUMERIC(20, 14),
+	in p_26_25_desviacion_p NUMERIC(20, 14),
+	in p_31_23_promedio_p   NUMERIC(20, 14),
+	in p_31_23_desviacion_p NUMERIC(20, 14),
+	in p_32_24_promedio_p   NUMERIC(20, 14),
+	in p_32_24_desviacion_p NUMERIC(20, 14),
+	in p_16_12_promedio_p   NUMERIC(20, 14),
+	in p_16_12_desviacion_p NUMERIC(20, 14),
+	in p_15_11_promedio_p   NUMERIC(20, 14),
+	in p_15_11_desviacion_p NUMERIC(20, 14),
+	in p_32_16_promedio_p   NUMERIC(20, 14),
+	in p_32_16_desviacion_p NUMERIC(20, 14),
+	in p_31_15_promedio_p   NUMERIC(20, 14),
+	in p_31_15_desviacion_p NUMERIC(20, 14)
+	)
+ LANGUAGE plpgsql
+AS $procedure$
+Begin
+	insert into entrenamiento(
+		videoid,
+		muestraid,
+		p_32_31_promedio,
+		p_32_31_desviacion,
+		p_28_27_promedio,
+		p_28_27_desviacion,
+		p_26_25_promedio,
+		p_26_25_desviacion,
+		p_31_23_promedio,
+		p_31_23_desviacion,
+		p_32_24_promedio,
+		p_32_24_desviacion,
+		p_16_12_promedio,
+		p_16_12_desviacion,
+		p_15_11_promedio,
+		p_15_11_desviacion,
+		p_32_16_promedio,
+		p_32_16_desviacion,
+		p_31_15_promedio,
+		p_31_15_desviacion
+		)
+	values (
+		videoid_p,
+		muestraid_p,
+		p_32_31_promedio_p,
+		p_32_31_desviacion_p,
+		p_28_27_promedio_p,
+		p_28_27_desviacion_p,
+		p_26_25_promedio_p,
+		p_26_25_desviacion_p,
+		p_31_23_promedio_p,
+		p_31_23_desviacion_p,
+		p_32_24_promedio_p,
+		p_32_24_desviacion_p,
+		p_16_12_promedio_p,
+		p_16_12_desviacion_p,
+		p_15_11_promedio_p,
+		p_15_11_desviacion_p,
+		p_32_16_promedio_p,
+		p_32_16_desviacion_p,
+		p_31_15_promedio_p,
+		p_31_15_desviacion_p
+		);	
+
+EXCEPTION
+        -- Si ocurre un error en la transacción principal, revertir
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE EXCEPTION 'Error transaccional: %', SQLERRM;	
+END;
+$procedure$
+;
+
+
+
+--select * from obtener_datos_entrenamiento(14)
+--select * from entrenamiento
+--modificar la funcion que enlista las muestras que se seleccionar en un modelo al crearlo para entrenarlo solo con dichas muestras
+CREATE OR REPLACE FUNCTION obtener_datos_entrenamiento(modeloid_p bigint)
+RETURNS JSON AS $$
+BEGIN
+  RETURN (
+
+   SELECT json_agg(
+  json_build_object(
+    'persona', persona,
+    'muestra_id', muestra_id,
+    'puntos', json_build_object(
+      '26_25', json_build_object(
+        'promedio', p_26_25_promedio,
+        'desviacion', p_26_25_desviacion
+      ),
+      '28_27', json_build_object(
+        'promedio', p_28_27_promedio,
+        'desviacion', p_28_27_desviacion
+      ),
+      '31_23', json_build_object(
+        'promedio', p_31_23_promedio,
+        'desviacion', p_31_23_desviacion
+      ),
+      '32_24', json_build_object(
+        'promedio', p_32_24_promedio,
+        'desviacion', p_32_24_desviacion
+      ),
+      '32_31', json_build_object(
+        'promedio', p_32_31_promedio,
+        'desviacion', p_32_31_desviacion
+      )
+		,
+      '16_12', json_build_object(
+        'promedio', p_16_12_promedio,
+        'desviacion', p_16_12_desviacion
+      )
+		,
+      '15_11', json_build_object(
+        'promedio', p_15_11_promedio,
+        'desviacion', p_15_11_desviacion
+      )
+		,
+      '32_16', json_build_object(
+        'promedio', p_32_16_promedio,
+        'desviacion', p_32_16_desviacion
+      )
+		,
+      '31_15', json_build_object(
+        'promedio', p_31_15_promedio,
+        'desviacion', p_31_15_desviacion
+      )
+    )
+  )
+)
+FROM (
+	select 
+    ROW_NUMBER() OVER (ORDER BY e.videoid) AS muestra_id,
+    p.persona,
+    e.p_32_31_promedio,
+    e.p_32_31_desviacion,
+    e.p_28_27_promedio,
+    e.p_28_27_desviacion,
+    e.p_26_25_promedio,	
+    e.p_26_25_desviacion,
+    e.p_31_23_promedio,
+    e.p_31_23_desviacion,
+    e.p_32_24_promedio,
+    e.p_32_24_desviacion,
+	e.p_16_12_promedio,
+	e.p_16_12_desviacion,
+	e.p_15_11_promedio,
+	e.p_15_11_desviacion,
+	e.p_32_16_promedio,
+	e.p_32_16_desviacion,
+	e.p_31_15_promedio,
+	e.p_31_15_desviacion	 
+	from 
+	personas_modelo pm
+	INNER JOIN muestras m ON pm.personaid = m.personaid
+	inner join entrenamiento e on e.muestraid = m.muestraid
+	INNER JOIN personas p ON pm.personaid = p.personaid
+	where pm.modeloid = modeloid_p
+--select * from personas_modelo
+) sub
+  );
+END;
+$$ LANGUAGE plpgsql;
 
 
 
