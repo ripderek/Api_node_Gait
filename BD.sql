@@ -803,7 +803,8 @@ $procedure$
 
 
 
---select * from obtener_datos_entrenamiento(14)
+--select * from obtener_datos_entrenamiento(15)
+--select * from modelos
 --select * from entrenamiento
 --modificar la funcion que enlista las muestras que se seleccionar en un modelo al crearlo para entrenarlo solo con dichas muestras
 CREATE OR REPLACE FUNCTION obtener_datos_entrenamiento(modeloid_p bigint)
@@ -892,6 +893,219 @@ FROM (
   );
 END;
 $$ LANGUAGE plpgsql;
+
+
+
+select
+--e.muestraid,
+e.videoid,
+e.p_32_31_promedio,
+e.p_32_31_desviacion,
+e.p_28_27_promedio,
+e.p_28_27_desviacion,
+e.p_26_25_promedio,
+e.p_26_25_desviacion,
+e.p_31_23_promedio,
+e.p_31_23_desviacion,
+e.p_32_24_promedio,
+e.p_32_24_desviacion,
+e.p_16_12_promedio,
+e.p_16_12_desviacion,
+e.p_15_11_promedio,
+e.p_15_11_desviacion,
+e.p_32_16_promedio,
+e.p_32_16_desviacion,
+e.p_31_15_promedio,
+e.p_31_15_desviacion
+from muestras m 
+inner join personas p on m.personaid =p.personaid
+inner join videos_muestras vm on vm.muestraid =m.muestraid 
+inner join entrenamiento e on e.muestraid =m.muestraid  and e.videoid =vm.videoid 
+where p.personaid =6;
+
+--select * from entrenamiento
+
+
+
+--agregar una columna a entrenamiento para saber la orientacion de la persona para seleccionar el modelo
+-- 1=> frontal, 2=> Espalda 3=>Lateral
+
+alter table entrenamiento add orientacion int default 1 not null;
+
+--select * from entrenamiento
+
+--agregar al procedimiento almacenado la orientacion
+DROP PROCEDURE public.registrar_puntos_muestra(int8, int8, numeric, numeric, numeric, numeric, numeric, numeric, numeric, numeric, numeric, numeric, numeric, numeric, numeric, numeric, numeric, numeric, numeric, numeric);
+
+CREATE OR REPLACE PROCEDURE public.registrar_puntos_muestra(IN videoid_p bigint, IN muestraid_p bigint, IN p_32_31_promedio_p numeric, IN p_32_31_desviacion_p numeric, IN p_28_27_promedio_p numeric, IN p_28_27_desviacion_p numeric, IN p_26_25_promedio_p numeric, IN p_26_25_desviacion_p numeric, IN p_31_23_promedio_p numeric, IN p_31_23_desviacion_p numeric, IN p_32_24_promedio_p numeric, IN p_32_24_desviacion_p numeric, IN p_16_12_promedio_p numeric, IN p_16_12_desviacion_p numeric, IN p_15_11_promedio_p numeric, IN p_15_11_desviacion_p numeric, IN p_32_16_promedio_p numeric, IN p_32_16_desviacion_p numeric, IN p_31_15_promedio_p numeric, IN p_31_15_desviacion_p numeric,IN orientacion_p integer)
+ LANGUAGE plpgsql
+AS $procedure$
+Begin
+	insert into entrenamiento(
+		videoid,
+		muestraid,
+		p_32_31_promedio,
+		p_32_31_desviacion,
+		p_28_27_promedio,
+		p_28_27_desviacion,
+		p_26_25_promedio,
+		p_26_25_desviacion,
+		p_31_23_promedio,
+		p_31_23_desviacion,
+		p_32_24_promedio,
+		p_32_24_desviacion,
+		p_16_12_promedio,
+		p_16_12_desviacion,
+		p_15_11_promedio,
+		p_15_11_desviacion,
+		p_32_16_promedio,
+		p_32_16_desviacion,
+		p_31_15_promedio,
+		p_31_15_desviacion,
+		orientacion
+		)
+	values (
+		videoid_p,
+		muestraid_p,
+		p_32_31_promedio_p,
+		p_32_31_desviacion_p,
+		p_28_27_promedio_p,
+		p_28_27_desviacion_p,
+		p_26_25_promedio_p,
+		p_26_25_desviacion_p,
+		p_31_23_promedio_p,
+		p_31_23_desviacion_p,
+		p_32_24_promedio_p,
+		p_32_24_desviacion_p,
+		p_16_12_promedio_p,
+		p_16_12_desviacion_p,
+		p_15_11_promedio_p,
+		p_15_11_desviacion_p,
+		p_32_16_promedio_p,
+		p_32_16_desviacion_p,
+		p_31_15_promedio_p,
+		p_31_15_desviacion_p,
+		orientacion_p
+		);	
+
+EXCEPTION
+        -- Si ocurre un error en la transacción principal, revertir
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE EXCEPTION 'Error transaccional: %', SQLERRM;	
+END;
+$procedure$
+;
+
+
+--obtener_datos_entrenamiento
+--agregar una variable para solo filtrar los datos de entrenamiento de una vista
+
+
+DROP FUNCTION public.obtener_datos_entrenamiento(int8);
+
+CREATE OR REPLACE FUNCTION public.obtener_datos_entrenamiento(modeloid_p bigint, in orientacion_p int)
+ RETURNS json
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+  RETURN (
+
+   SELECT json_agg(
+  json_build_object(
+    'persona', persona,
+    'muestra_id', muestra_id,
+	'orientacion',orientacion,
+    'puntos', json_build_object(
+      '26_25', json_build_object(
+        'promedio', p_26_25_promedio,
+        'desviacion', p_26_25_desviacion
+      ),
+      '28_27', json_build_object(
+        'promedio', p_28_27_promedio,
+        'desviacion', p_28_27_desviacion
+      ),
+      '31_23', json_build_object(
+        'promedio', p_31_23_promedio,
+        'desviacion', p_31_23_desviacion
+      ),
+      '32_24', json_build_object(
+        'promedio', p_32_24_promedio,
+        'desviacion', p_32_24_desviacion
+      ),
+      '32_31', json_build_object(
+        'promedio', p_32_31_promedio,
+        'desviacion', p_32_31_desviacion
+      )
+		,
+      '16_12', json_build_object(
+        'promedio', p_16_12_promedio,
+        'desviacion', p_16_12_desviacion
+      )
+		,
+      '15_11', json_build_object(
+        'promedio', p_15_11_promedio,
+        'desviacion', p_15_11_desviacion
+      )
+		,
+      '32_16', json_build_object(
+        'promedio', p_32_16_promedio,
+        'desviacion', p_32_16_desviacion
+      )
+		,
+      '31_15', json_build_object(
+        'promedio', p_31_15_promedio,
+        'desviacion', p_31_15_desviacion
+      )
+    )
+  )
+)
+FROM (
+	select 
+    ROW_NUMBER() OVER (ORDER BY e.videoid) AS muestra_id,
+    p.persona,
+    e.p_32_31_promedio,
+    e.p_32_31_desviacion,
+    e.p_28_27_promedio,
+    e.p_28_27_desviacion,
+    e.p_26_25_promedio,	
+    e.p_26_25_desviacion,
+    e.p_31_23_promedio,
+    e.p_31_23_desviacion,
+    e.p_32_24_promedio,
+    e.p_32_24_desviacion,
+	e.p_16_12_promedio,
+	e.p_16_12_desviacion,
+	e.p_15_11_promedio,
+	e.p_15_11_desviacion,
+	e.p_32_16_promedio,
+	e.p_32_16_desviacion,
+	e.p_31_15_promedio,
+	e.p_31_15_desviacion,
+	e.orientacion
+	from 
+	personas_modelo pm
+	INNER JOIN muestras m ON pm.personaid = m.personaid
+	inner join entrenamiento e on e.muestraid = m.muestraid
+	INNER JOIN personas p ON pm.personaid = p.personaid
+	where pm.modeloid = modeloid_p and e.orientacion = orientacion_p
+--select * from personas_modelo
+) sub
+  );
+END;
+$function$
+;
+
+--select * from modelos
+--select orientacion from entrenamiento
+
+
+
+--select * from obtener_datos_entrenamiento(16,2)
+
+
+
+
 
 
 
