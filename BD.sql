@@ -1106,8 +1106,211 @@ $function$
 
 
 
+--crear una tabla que guarde las evaluaciones de los modelos para contabilizar automaticamente todo sin necesidad de pasar a excel
+create table Evualuaciones(
+	evaluacionid BIGSERIAL PRIMARY KEY,
+	evaluacion text not null unique,
+	fecha timestamp default now() not null
+);
+
+-- drop table evualuacion_participante
+create table evualuacion_participante(
+	evaluacionpid BIGSERIAL PRIMARY KEY,
+	participante text not null default 'pt',
+	fecha timestamp default now() not null,
+	evaluacionid bigint not null,
+	CONSTRAINT fk_evaluacionid_participante
+        FOREIGN KEY (evaluacionid)
+        REFERENCES Evualuaciones(evaluacionid)
+);
+
+--tabla para guardar los resultados de las evaluaciones de los videos
+--drop table videos_evaluaciones
+--drop table videos_evaluaciones
+create table videos_evaluaciones(
+	n_video int not null,
+	orientacion text default 'nc',
+	escenario text default 'controlado',
+	vp NUMERIC(20, 14) not null default 0,
+	fp NUMERIC(20, 14) not null default 0,
+	pi NUMERIC(20, 14) not null default 0,
+	pi_vp NUMERIC(20, 14) not null default 0,
+	pc NUMERIC(20, 14) not null default 0,
+	pc_i NUMERIC(20, 14) not null default 0,
+	evaluacionid bigint not null,
+	evaluacionpid bigint not null,
+		CONSTRAINT fk_evaluacionid_participante_video
+        FOREIGN KEY (evaluacionpid)
+        REFERENCES evualuacion_participante(evaluacionpid),
+	CONSTRAINT fk_evaluacionid_participante_v
+        FOREIGN KEY (evaluacionid)
+        REFERENCES Evualuaciones(evaluacionid)
+);
 
 
 
+
+
+--funcion que guarda una evaluacion y devuelve el id de la evualacion
+CREATE OR REPLACE FUNCTION public.insertar_evaluacion_retornar_id(in evaluacion_p text )
+ RETURNS TABLE(
+  evaluacionid bigint
+ )
+ LANGUAGE plpgsql
+AS $function$
+begin
+
+	--#1 insertar
+	insert into Evualuaciones(evaluacion) values (evaluacion_p);
+	--#2 devolver el ultimo id 
+	return query
+	select e.evaluacionid from Evualuaciones e order by evaluacionid desc limit 1;
+end;
+$function$
+;
+
+--select * from insertar_evaluacion_retornar_id('hello world!')
+--select * from Evualuaciones
+
+--ahora crear una funcion que guarde el participante en la evaluacion que se creo y devuelva su id de evalucionparticipante
+--select * from Evualuaciones
+--select * from evualuacion_participante
+
+CREATE OR REPLACE FUNCTION public.insertar_participante_evaluacion_retornar_id(in participante_p text, in evaluacionid_p bigint )
+ RETURNS TABLE(
+  evaluacionpid bigint
+ )
+ LANGUAGE plpgsql
+AS $function$
+begin
+	--#1 insertar
+		insert into evualuacion_participante(participante,evaluacionid) values(participante_p,evaluacionid_p);
+	--#2 devolver el ultimo id 
+	return query
+		select ep.evaluacionpid from evualuacion_participante ep order by ep.evaluacionpid desc limit 1;
+end;
+$function$
+;
+
+
+--ahora guardar los resultados de los videos en la tabla para luego realizar calculos
+--select * from insertar_resultados_videos(1,'Frontal','Controlado',1,1,1,1,1,1,10,1)
+CREATE OR REPLACE FUNCTION public.insertar_resultados_videos(
+	in n_video_p int,
+	in orientacion_p text,
+	in escenario_p text,
+	in vp_p NUMERIC(20, 14),
+	in fp_p NUMERIC(20, 14),
+	in pi_p NUMERIC(20, 14),
+	in pi_vp_p NUMERIC(20, 14),
+	in pc_p NUMERIC(20, 14),
+	in pc_i_p NUMERIC(20, 14),
+	in evaluacionpid_p bigint,
+	in evaluacionid_p bigint
+)
+ RETURNS TABLE(
+  resultado bigint
+ )
+ LANGUAGE plpgsql
+AS $function$
+begin
+	--#1 insertar
+	 insert into videos_evaluaciones
+	(
+	n_video,
+	orientacion,
+	escenario,
+	vp,
+	fp,
+	pi,
+	pi_vp,
+	pc,
+	pc_i,
+	evaluacionpid,
+	evaluacionid
+	) 
+	values(
+	n_video_p,
+	orientacion_p,
+	escenario_p,
+	vp_p,
+	fp_p,
+	pi_p,
+	pi_vp_p,
+	pc_p,
+	pc_i_p,
+	evaluacionpid_p,
+	evaluacionid_p
+	);
+
+	--#2 devolver 
+	return query
+		select cast(1 as bigint);
+end;
+$function$
+;
+
+
+
+--select * from Evualuaciones
+--select * from evualuacion_participante
+--select COUNT(*) from videos_evaluaciones
+
+--------------------------------------------------------[RESULTADO EVALUACION MODELOS]------------------------------------
+--Evaluacion ID -> 23
+--Evaluacion ID -> 23
+--hacer una consulta que devuelva los porcentajes de precision general por cada participante
+SELECT 
+    ep.participante,
+    SUM(ve.vp) AS total_vp,
+    SUM(ve.fp) AS total_fp,
+    SUM(ve.pi_vp) AS total_pi_vp,
+    ROUND( (SUM(ve.vp)::numeric / NULLIF(SUM(ve.vp) + SUM(ve.fp),0)) * 100, 2) AS pg_porcentaje,
+    ROUND( (SUM(ve.pi_vp)::numeric / NULLIF(SUM(ve.pi_vp) + SUM(ve.fp),0)) * 100, 2) AS pg_pi_porcentaje
+FROM videos_evaluaciones ve
+INNER JOIN evualuacion_participante ep 
+    ON ve.evaluacionpid = ep.evaluacionpid 
+WHERE ve.evaluacionid = 23
+GROUP BY ep.participante, ve.evaluacionpid
+ORDER BY pg_pi_porcentaje DESC;
+
+--hacer una consulta que devuelva los porcentajes de precision general por cada orientacion por escenario de una evaluacion
+SELECT 
+    ve.escenario,
+    ve.orientacion,
+    SUM(ve.vp) AS total_vp,
+    SUM(ve.fp) AS total_fp,
+    SUM(ve.pi_vp) AS total_pi_vp,
+    ROUND( (SUM(ve.vp)::numeric / NULLIF(SUM(ve.vp) + SUM(ve.fp),0)) * 100, 2) AS pg_porcentaje,
+    ROUND( (SUM(ve.pi_vp)::numeric / NULLIF(SUM(ve.pi_vp) + SUM(ve.fp),0)) * 100, 2) AS pg_pi_porcentaje
+FROM videos_evaluaciones ve
+WHERE ve.evaluacionid = 23
+GROUP BY ve.escenario, ve.orientacion
+ORDER BY pg_pi_porcentaje desc;
+
+
+--hacer una consulta que devuelva la precision por escenario
+SELECT 
+    ve.escenario,
+    SUM(ve.vp) AS total_vp,
+    SUM(ve.fp) AS total_fp,
+    SUM(ve.pi_vp) AS total_pi_vp,
+    ROUND( (SUM(ve.vp)::numeric / NULLIF(SUM(ve.vp) + SUM(ve.fp),0)) * 100, 2) AS pg_porcentaje,
+    ROUND( (SUM(ve.pi_vp)::numeric / NULLIF(SUM(ve.pi_vp) + SUM(ve.fp),0)) * 100, 2) AS pg_pi_porcentaje
+FROM videos_evaluaciones ve
+WHERE ve.evaluacionid = 24
+GROUP BY ve.escenario
+ORDER BY pg_pi_porcentaje desc;
+
+
+--hacer una consulta que devuelva la precision general de toda la evaluacion
+SELECT 
+    SUM(ve.vp) AS total_vp,
+    SUM(ve.fp) AS total_fp,
+    SUM(ve.pi_vp) AS total_pi_vp,
+    ROUND( (SUM(ve.vp)::numeric / NULLIF(SUM(ve.vp) + SUM(ve.fp),0)) * 100, 2) AS pg_porcentaje,
+    ROUND( (SUM(ve.pi_vp)::numeric / NULLIF(SUM(ve.pi_vp) + SUM(ve.fp),0)) * 100, 2) AS pg_pi_porcentaje
+FROM videos_evaluaciones ve
+WHERE ve.evaluacionid = 24;
 
 
